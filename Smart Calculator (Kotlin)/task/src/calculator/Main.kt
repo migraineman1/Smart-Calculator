@@ -1,11 +1,17 @@
 package calculator
 
 fun main() {
-    var input = ""
+    var input: String? = ""
     var result = 0
     while (input != "/exit") {
         input = readln() ?: continue
-        if (input != "/exit" && !(input.isNullOrBlank())) {
+        if (input.isNotBlank()){
+            if (input[0] == '/' && !(input == "/exit" || input == "/help")) {
+                println("Unknown command")
+                continue
+            }
+        }
+        if (input != "/exit" && (input.isNotBlank())) {
             if (input == "/help") {
                 println("The program calculates the sum and difference of numbers")
             } else {
@@ -33,7 +39,8 @@ fun main() {
                             else -> acc
                         }
                     }
-                } catch (e: NumberFormatException) {
+                } catch (e: Exception) {
+                    println("Invalid expression")
                     continue
                 }
                 println(result)
