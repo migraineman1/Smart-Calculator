@@ -1,15 +1,19 @@
 package calculator
 
+// Calculator storage of variables entered by the user stored in the format variableName:value
 var variables = mutableMapOf<String, Int>()
 
+// function to check if a string contains non-Latin characters
 fun containsNonLatinCharacters(text: String): Boolean {
     return text.any { !it.isLatin() }
 }
 
+// function to check if a character is part of the Latin character set
 fun Char.isLatin(): Boolean {
     return this in 'A'..'Z' || this in 'a'..'z'
 }
 
+// function to see if a variable has a valid name, position variable selects error message
 fun validVariableName(name: String, position: Int): Boolean {
     if (containsNonLatinCharacters(name)) {
         if (position == 1) println("Invalid identifier")
@@ -24,6 +28,7 @@ fun validVariableName(name: String, position: Int): Boolean {
     }
 }
 
+// function to see if a variable name already exists, position variable selects error message
 fun variableExists(name: String, position: Int): Boolean {
     if (variables.containsKey(name)) {
         return true
@@ -34,81 +39,200 @@ fun variableExists(name: String, position: Int): Boolean {
     }
 }
 
-fun saveVariable(name: String, value: Int) = variables.put(name, value)
-
-fun updateVariable(name: String, value: Int) = value.also { variables[name] = it }
-
-fun assignVariable(input: String, value: Int) {
-    if (variableExists(input, 1)) {
-        updateVariable(input, value)
-    } else {
-        saveVariable(input, value)
-    }
-}
-
-//perform calculation
-fun solve(operatorList: List<String>, numberList: List<Int>): Int {
-    val integerList = numberList.map { it.toInt() }
-    val result = integerList.reduceIndexed { index, acc, i ->
-        when (operatorList[index]) {
-            "+" -> acc + i
-            "-" -> acc - i
-            else -> acc
+//
+fun processVariable(variable: String): Int {
+    if (validVariableName(variable, 2)) {
+        if (variableExists(variable, 2)) {
+            return variables[variable]!!
         }
+
     }
-    return result
+    return -1
 }
 
-// split equation string into operands and integers
-fun parseEquation(equation: String): Pair<List<String>, MutableList<String>> {
-    var (operatorList: List<String>, numberList: List<String>) = equation.split(" ")
-        .partition { """[\+|\-]+""".toRegex().matches(it) }
+fun parseInput(inval: String): String {
+    var input = inval
+    val returnString = StringBuilder()
+    while (input.isNotEmpty()) {
+        when (input[0]) {
+            // is variable, retrieve value and put value into return string and remove from input
+            in 'a'..'z', in 'A'..'Z' -> {
+                val variableName = "[a-zA-Z]+".toRegex().find(input)
+                val result = processVariable(variableName!!.value)
+                if (returnString.length != 0) returnString.append(" ")
+                returnString.append(result.toString())
+                input = input.drop(variableName.value.length)
+            } // end of is variable
 
-    val mutableOperatorList = operatorList.toMutableList()
-    val mutableNumberList = numberList.toMutableList()
+            // is number, put number in return string and remove from input
+            in '0'..'9' -> {
+                val number = "[0-9]+".toRegex().find(input)
+                if (returnString.length != 0) returnString.append(" ")
+                returnString.append(number!!.value)
+                val len = 1
+                input = input.drop(number.value.length)
+            } // end of is number
 
-    // simplify string of multiple minus or plus signs
-    for (index in operatorList.indices) {
-        if (operatorList[index].contains('-'))
-            if (operatorList[index].length % 2 == 0) mutableOperatorList[index] = "+"
-            else mutableOperatorList[index] = "-"
-        if (operatorList[index].contains('+')) mutableOperatorList[index] = "+"
-    }
+            // is one or more plus signs
+            '+' -> {
+                val plusSigns = "[+]+".toRegex().find(input)
+                if (returnString.length != 0) returnString.append(" ")
+                returnString.append('+')
+                input = input.drop(plusSigns!!.value.length)
+            } // end of is one or more plus signs
 
-    // equalize size of operator list and number list
-    if (operatorList.size != numberList.size) {
-        mutableOperatorList.add(0, "+")
-        operatorList = mutableOperatorList.toList()
-    }
+            // is one or more minus signs
+            '-' -> {
+                val minusSigns = "[-]+".toRegex().find(input)
+                if (returnString.length != 0) returnString.append(" ")
+                if (minusSigns!!.value.length % 2 == 0) returnString.append('+') else returnString.append(
+                    '-'
+                )
+                input = input.drop(minusSigns!!.value.length)
+            } // end of is one or more minus signs
 
-    return Pair(operatorList, mutableNumberList)
+            // is ( ) * /
+            '(', ')', '*', '/' -> {
+                if (returnString.length != 0) returnString.append(" ")
+                returnString.append(input[0])
+                input = input.drop(1)
+            } // end is ( ) * /
+
+            else -> input = input.drop(1)
+
+        } // end of when
+    } // end of while
+    return returnString.toString()
 }
 
-fun convertToNumbers(numbers: MutableList<String>): Pair<List<Int>, Boolean> {
-    var success = true
-    val mutableNumberList = mutableListOf<Int>()
-    for (number in numbers) {
-        if (number.matches(Regex("[a-zA-Z]+"))) {
-            if (validVariableName(number, 2)) {
-                if (variableExists(number, 2)) {
-                    mutableNumberList.add(variables[number]!!)
-                } else {
-                    success = false
+fun appendAndPop(sb: StringBuilder, deque: ArrayDeque<String>) {
+    sb.append(" ")
+    sb.append(deque.last())
+    deque.removeLast()
+}
+
+fun convertToPostfix(input: String): String {
+    var equation = input
+    while (equation.contains('(')) {
+        val startIndex = equation.indexOf('(')
+        var endIndex = equation.lastIndexOf(')')
+        var openParenthesisCount = 1
+        var closeParenthesisCount = 0
+            for (i in startIndex + 1 until equation.length) {
+                if (equation[i] == '(') openParenthesisCount++
+                if (equation[i] == ')') closeParenthesisCount++
+                if (openParenthesisCount == closeParenthesisCount){
+                    endIndex = i
                     break
                 }
-            } else {
-                success = false
-                break
             }
+
+
+        val result = solveEquation(equation.substring(startIndex + 1, endIndex))
+        val sb = StringBuilder(equation)
+        sb.deleteRange(startIndex, endIndex + 1)
+        sb.insert(startIndex, " $result ")
+        equation = sb.toString()
+    }
+
+
+    var equationComponents = equation.split(" ")
+
+    // using ArrayDeque allows manipulation with add(), removeLast(), and value retrieval with last()
+    var deque = ArrayDeque<String>()
+    val sb = StringBuilder()
+// need to work directly from string so () parts can be excised from string when necessary
+    equationComponents = equationComponents.filter { it != "" }
+
+    for (component in equationComponents) {
+        if (component.matches(Regex("""-?\d+"""))) {
+            if (sb.length != 0) sb.append(' ')
+            sb.append(component)
         } else {
-            if (number.matches(Regex("[0-9]+"))) {
-                mutableNumberList.add(number.toInt())
+            if (deque.size == 0) deque.add(component)
+            else {
+                when (component) {
+                    "+", "-" -> {
+                        // if previous operation on stack is * or / append to postfix equation and pop stack
+                        if (deque.size > 0) {
+                            if ((deque.last() == "*") || (deque.last() == "/")) {
+                                appendAndPop(sb, deque)
+
+                                // if deque is empty just add component
+                                if (deque.size == 0) deque.add(component)
+
+                                // else if previous operation on stack is + or - append to postfix equation and pop stack
+                                else if ((deque.last() == "+") || (deque.last() == "-")) {
+                                    appendAndPop(sb, deque)
+                                    deque.add(component)
+                                }
+                            } else if ((deque.last() == "+") || (deque.last() == "-")) {
+                                appendAndPop(sb, deque)
+                                deque.add(component)
+                            }
+                        } else
+                            // if stack is empty
+                            deque.add(component)
+
+                    }
+
+                    "*", "/" -> {
+                        // if previous operation on stack is * or / append to postfix equation and pop stack
+                        if (deque.size > 0) {
+                            if ((deque.last() == "*") || (deque.last() == "/")) {
+                                appendAndPop(sb, deque)
+                            }
+                        }
+                        deque.add(component)
+
+                    }
+
+                }
+            }
+
+        }
+    }
+    do {
+        appendAndPop(sb, deque)
+    } while (deque.isNotEmpty())
+    // if empty string was passed in
+    // if (sb.isEmpty())  sb.append('0')
+
+    return sb.toString()
+}
+
+fun solvePostfix(equation: String): Int {
+    val equationComponents = equation.split(" ")
+
+    // using ArrayDeque allows manipulation with add(), removeLast(), and value retrieval with last()
+    val deque = ArrayDeque<String>()
+
+    for (component in equationComponents) {
+        if (component.contains(Regex("""[0-9]"""))) {
+            deque.add(component)
+        } else {
+            val second = deque.last().toInt()
+            deque.removeLast()
+            val first = deque.last().toInt()
+            deque.removeLast()
+            when (component) {
+                "+" -> deque.add((first + second).toString())
+                "-" -> deque.add((first - second).toString())
+                "*" -> deque.add((first * second).toString())
+                "/" -> deque.add((first / second).toString())
             }
         }
     }
-    return Pair(mutableNumberList.toList(), success)
+    return deque.last().toInt()
 }
 
+fun solveEquation(equation: String): Int {
+    var input = equation
+    input = parseInput(input)
+    // convert to postfix format equation and solve
+    input = convertToPostfix(input)
+    return solvePostfix(input)
+}
 
 fun main() {
     // allow for a null entry at the console
@@ -119,7 +243,7 @@ fun main() {
                     b = -5
                     sum = a + b
                     sum   (outputs 5)
-                    or a straight equation 5 + 3 - 7
+                    or a straight equation 5 + 3 * 7
                 """
     var input: String? = ""
 
@@ -129,99 +253,85 @@ fun main() {
         input = readln() ?: continue
 
         // check for input consisting only of whitespace
-        if (input.isNotBlank()) {
+        if (input.isBlank()) continue
+        else {
+            input = input.trim()
             if (input[0] == '/' && !(input == "/exit" || input == "/help")) {
                 println("Unknown command")
                 continue
             }
 
-            // if help command print the help message
-            if (input == "/help") {
-                println(helpMessage.trimMargin())
-                continue
-            }
-
             if (input != "/exit") {
 
-                // check if numeric equation
-                if (input.all { it in ('0'..'9').toSet() || it == '+' || it == '-' || it == ' ' }) {
-                    val (operatorList, mutableNumberList) = parseEquation(input)
-                    val (numberList, success) = convertToNumbers(mutableNumberList)
-                    if (success) println(solve(operatorList, numberList))
+                // if help command print the help message
+                if (input == "/help") {
+                    println(helpMessage.trimMargin())
                     continue
                 }
 
-                // strip out numbers and math symbols and check if input contains non latin characters
-                if (containsNonLatinCharacters(input.filter { it !in setOf('+', '-', '=', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9')  })) {
-                    println("Invalid identifier")
+                // check if equation is valid
+                if ((input.count { it.equals('(') } != input.count { it.equals(')') }) || input.count { it.equals('=') } > 1 || input.contains("""(%{2}|/{2}|\*{2})""".toRegex()))  {
+                    println("Invalid expression")
                     continue
                 }
 
+                // is input an assignment
+                if (input.contains('=')) {
 
-                // check if input contains variables
-                if (input.contains("""[a-zA-Z]+""".toRegex())) {
+                    // check if input contains variables
+                    if (input.contains("""[a-zA-Z]+""".toRegex())) {
 
-                    // does input contain only a single variable, if so print value of variable
-                    if (input.split(" ", "=").size == 1) {
-                        input = input.trim()
-                        if (validVariableName(input, 1)) {
-                            if (variableExists(input, 1)) {
-                                println(variables[input])
-                            } else continue
-                        } else continue
-                    }
 
-                    // check if input is a variable assignment
-                    if (input.split("=", "=").size == 2) {
-                        var (first: String, second: String) = input.split("=")
-                        first = first.trim()
-                        second = second.trim()
+                        // check if input is a variable assignment
+                        if (input.split("=").size == 2) {
+                            var (first: String, second: String) = input.split("=")
+                            first = first.trim()
+                            second = second.trim()
 
-                        // is first parameter a valid variable, if so prepare to assign it a value
-                        if (validVariableName(first, 1)) {
-
-                            // if second is an integer and assign to variable
-                            if (second.all { it in ('0'..'9').toSet() || it == '+' || it == '-' }) {
-                                variables[first] = second.toInt()
+                            // check if variable assignment by equation
+                            if (second.contains("""[+\-*/]""".toRegex()) && !second.matches(Regex("""-?\d+"""))) {
+                                variables[first] = solveEquation(second)
+                                continue
                             } else {
 
-                                // is second variable valid and does it exist
-                                if (validVariableName(second, 2)) {
-                                    if (variableExists(second, 2)) {
+                                // is first parameter a valid variable, if so prepare to assign it a value
+                                if (validVariableName(first, 1)) {
 
-                                        // if so does first variable exist, if so assign it the value of the second variable
-                                        // if not, create it
-                                        variables[first] = variables[second]!!
-                                    } else continue
-                                } else continue
+                                    // if second parameter is an integer assign to variable
+                                    if (second.all { it in ('0'..'9').toSet() || it == '+' || it == '-' }) {
+                                        variables[first] = second.toInt()
+                                    } else {
+
+                                        // is second variable valid and does it exist
+                                        if (validVariableName(second, 2)) {
+                                            if (variableExists(second, 2)) {
+
+                                                // if so does first variable exist, if so assign it the value of the second variable
+                                                // if not, create it
+                                                variables[first] = variables[second]!!
+                                            }
+                                        } else continue
+                                    }
+
+                                }
+
                             }
+                        } // close of variable assignment
+                    }
 
-                        }
-
-                        // check if variable assignment by equation
-                        if (second.contains("""("+"|"-")""".toRegex())) {
-                            val (operatorList, mutableNumberList) = parseEquation(second)
-                            val (numberList, success) = convertToNumbers(mutableNumberList)
-                            if (success) println(solve(operatorList, numberList))
-                            else continue
-                        }
-
-                    } // close of variable assignment
+                } else {
+                    // if input is just a variable print its value
+                    if (input.matches("""[a-zA-Z]+""".toRegex())) {
+                        if (variableExists(input, 1)) println(variables[input])
+                        continue
+                    }
+                    // input is a straight equation so solve
+                    println(solveEquation(input))
                 }
 
-                // was an equation  entered, if so solve
-                if (input.contains("""[+\-]""".toRegex())) {
-                    val (operatorList, mutableNumberList) = parseEquation(input)
-                    val (numberList, success) = convertToNumbers(mutableNumberList)
-                    if (success) println(solve(operatorList, numberList))
-                    else continue
-                }
             }
-
         }
-
-
     }
-
     println("Bye!")
 }
+
