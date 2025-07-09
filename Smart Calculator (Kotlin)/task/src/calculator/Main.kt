@@ -1,7 +1,9 @@
 package calculator
 
+import java.math.BigInteger
+
 // Calculator storage of variables entered by the user stored in the format variableName:value
-var variables = mutableMapOf<String, Int>()
+var variables = mutableMapOf<String, BigInteger>()
 
 // function to check if a string contains non-Latin characters
 fun containsNonLatinCharacters(text: String): Boolean {
@@ -40,14 +42,14 @@ fun variableExists(name: String, position: Int): Boolean {
 }
 
 //
-fun processVariable(variable: String): Int {
+fun processVariable(variable: String): BigInteger {
     if (validVariableName(variable, 2)) {
         if (variableExists(variable, 2)) {
             return variables[variable]!!
         }
 
     }
-    return -1
+    return -1.toBigInteger()
 }
 
 fun parseInput(inval: String): String {
@@ -201,7 +203,7 @@ fun convertToPostfix(input: String): String {
     return sb.toString()
 }
 
-fun solvePostfix(equation: String): Int {
+fun solvePostfix(equation: String): BigInteger {
     val equationComponents = equation.split(" ")
 
     // using ArrayDeque allows manipulation with add(), removeLast(), and value retrieval with last()
@@ -211,9 +213,9 @@ fun solvePostfix(equation: String): Int {
         if (component.contains(Regex("""[0-9]"""))) {
             deque.add(component)
         } else {
-            val second = deque.last().toInt()
+            val second = deque.last().toBigInteger()
             deque.removeLast()
-            val first = deque.last().toInt()
+            val first = deque.last().toBigInteger()
             deque.removeLast()
             when (component) {
                 "+" -> deque.add((first + second).toString())
@@ -223,10 +225,10 @@ fun solvePostfix(equation: String): Int {
             }
         }
     }
-    return deque.last().toInt()
+    return deque.last().toBigInteger()
 }
 
-fun solveEquation(equation: String): Int {
+fun solveEquation(equation: String): BigInteger {
     var input = equation
     input = parseInput(input)
     // convert to postfix format equation and solve
@@ -299,7 +301,7 @@ fun main() {
 
                                     // if second parameter is an integer assign to variable
                                     if (second.all { it in ('0'..'9').toSet() || it == '+' || it == '-' }) {
-                                        variables[first] = second.toInt()
+                                        variables[first] = second.toBigInteger()
                                     } else {
 
                                         // is second variable valid and does it exist
